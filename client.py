@@ -18,7 +18,8 @@ async def client():
 				break
 			
 			json_obj = {
-				"msg": msg,
+				"type": msg,
+				"name": "John",
 				"timestamp": time.time()
 			}
 			await websocket.send(json.dumps(json_obj))

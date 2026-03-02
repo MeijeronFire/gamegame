@@ -1,12 +1,37 @@
+#####################################################################
+"""
+Accepted protocols:
+	- register:
+		msg: register (str)
+		name: displayname: (str)
+"""
+
+
+#
+# imports for server
+#
+
 from fastapi import FastAPI, WebSocket, Request
 from fastapi import WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+
+#
+# utils
+#
+
 import json
 import cmd
 import threading
+
+#
+# game modules
+#
+
+from game.uber import Uber
+uber = Uber()
 
 #
 # definitions
@@ -19,6 +44,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static") # css
 #
 # mutexes
 #
+
 game_lock = threading.Lock()
 # console_print_lock = threading.Lock()
 # def safe_print(*args, **kwargs):
@@ -26,32 +52,16 @@ game_lock = threading.Lock()
 # 		print(*args, **kwargs)
 
 #
-# API endpoints
+# protocol layer
 #
 
-## HTML endpoint
-@app.get("/", response_class=HTMLResponse)
-def read_root(request: Request):
-	return templates.TemplateResponse("index.html", {"request": request, "title": "FastAPI Game", "player_count": 3})
-
-## websocket endpoint
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-	await websocket.accept()  # Accept the client connection
-	try: # do this until the websocket disconnects unexpectedly
-		while 1:	
-			try: # do this unless the json is broken
-				data = await websocket.receive_text()        # Wait for client message
-				msg = json.loads(data)
-			except json.JSONDecodeError: # if the json is broken
-				await websocket.send_json({"error": "malformed json"})
-				continue # wait for the next thingie
-
-			print(f"received {msg["msg"]} at {msg["timestamp"]}")
-			# send response
-			await websocket.send_json({"lorem": "ipsum"})
-	except WebSocketDisconnect:
-		print("Client disconnected (normal or abnormal)")
+def readMsg(msg: json) -> json:
+	type = msg["type"]
+	match type:
+		case "register":
+			uber.genPlayer(msg["name"])
+		case _:
+			print("idk what you want")
 
 #
 # console
@@ -64,11 +74,48 @@ class Console(cmd.Cmd):
 	def do_hello(self, arg):
 		"""
 		usage: hello <name>
-		
+
 		name: person to greet
 		"""
 		print(f"Hello {arg}")
 	
+	def do_printstate(self, arg):
+		"""
+		usage: hello <name>
+
+		name: person to greet
+		"""
+		print(f"{uber.state}")
+	
+
+#
+# API endpoints
+#
+
+## HTML endpoint
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+	return templates.TemplateResponse("index.html", {"request": request, "title": "FastAPI Game", "player_count": 3})
+
+# TRANSPORT LAYER
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+	await websocket.accept()  # Accept the client connection
+	try: # do this until the websocket disconnects unexpectedly
+		while 1:	
+			try: # do this unless the json is broken
+				# read and load message
+				data = await websocket.receive_text()
+				msg = json.loads(data)
+				print(f"received {msg["type"]} query at {msg["timestamp"]}") # log input
+			except json.JSONDecodeError: # if the json is broken
+				await websocket.send_json({"error": "malformed json"})
+				continue # wait for the next thingie
+
+			resp = readMsg(msg)
+			await websocket.send_json(resp)
+	except WebSocketDisconnect:
+		print("Client disconnected (normal or abnormal)")
 
 if __name__ == "__main__":
 	console = Console()
