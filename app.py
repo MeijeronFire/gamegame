@@ -3,6 +3,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+import json
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates") # html
@@ -14,16 +15,12 @@ def read_root(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    print("Client connected")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print(f"Received from client: {data}")
-            # Echo back a response
-            await websocket.send_text(f"Server echo: {data}")
-    except Exception as e:
-        print("Client disconnected", e)
+	await websocket.accept()  # Accept the client connection
+	while 1:	
+		data = await websocket.receive_text()        # Wait for client message
+		msg = json.loads(data)
+		print(f"received {msg["msg"]} at {msg["timestamp"]}")
+		await websocket.send_json({"lorem": "ipsum"})
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+	uvicorn.run(app, host="127.0.0.1", port=8000)
