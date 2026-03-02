@@ -7,12 +7,23 @@ Accepted protocols:
 		- own UUID for every request that is not _register_
 	Specific queries:
 	
-	register:
+	register: registers player
 		input:
-			msg: register (str)
 			name: displayname: (str)
 		output:
+			type: regResp
 			uuid: UUID
+
+	
+	getState: returns the current state, i.e. game.state
+		input:
+		output:
+	
+	showPacket: returns the packet sent
+		input
+		output
+	
+	error: says there is an error
 """
 
 
@@ -68,9 +79,12 @@ def readMsg(msg: dict) -> dict:
 	type = msg["type"]
 	match type:
 		case "register":
-			return {'uuid': uber.genPlayer(msg["name"])}
+			print(msg)
+			return {"type": "regResp",'uuid': uber.genPlayer(msg["name"])}
 		case "getState":
 			return uber.getState()
+		case "showPacket":
+			return msg
 		case _:
 			print("idk what you want")
 
@@ -92,12 +106,19 @@ class Console(cmd.Cmd):
 	
 	def do_printstate(self, arg):
 		"""
-		usage: hello <name>
-
-		name: person to greet
+		usage: printstate
+		
+		prints current state of game
 		"""
 		print(f"{uber.state}")
 	
+	def do_printplayerdata(self, arg):
+		"""
+		usage: printstate
+		
+		prints current state of game
+		"""
+		print(f"{uber.playerData}")
 
 #
 # API endpoints
@@ -106,7 +127,11 @@ class Console(cmd.Cmd):
 ## HTML endpoint
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
-	return templates.TemplateResponse("index.html", {"request": request, "title": "FastAPI Game", "player_count": 3})
+	return templates.TemplateResponse("index.html", {
+			"request": request,
+			"title": "FastAPI Game",
+			"players" : uber.state["playerNames"]
+		})
 
 # TRANSPORT LAYER
 @app.websocket("/ws")

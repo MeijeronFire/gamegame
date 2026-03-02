@@ -9,8 +9,8 @@
     <p>Number of players: {{ player_count }}</p>
 
     <ul>
-    {% for i in range(player_count) %}
-        <li>Player {{ i + 1 }}</li>
+    {% for player in players %}
+        <li>Player {{ player }}</li>
     {% endfor %}
     </ul>
 

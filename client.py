@@ -3,53 +3,61 @@ import websockets
 import time
 import json
 
-uuid = ""
 
-def registerJson() -> str:
-	return json.dumps({
-		"type": "register",
-		"name": "Evgeny",
-		"timestamp": time.time()
-	})
+class Client:
+	def __init__(self):
+		self.connection = None
+		self.uuid = None
+		self.url = None # "ws://127.0.0.1:8000/ws"
+		self.name = "Evgeny"
+		self.loop = asyncio.new_event_loop()
+		asyncio.set_event_loop(self.loop)
 
-async def async_input(prompt: str = "") -> str:
-	return await asyncio.get_event_loop().run_in_executor(None, input, prompt)
+	async def _connect(self):
+		self.connection = await websockets.connect(self.url, ping_interval=20, ping_timeout=10)
 
-async def client():
-	global uuid
-	uri = "ws://127.0.0.1:8000/ws"
-	async with websockets.connect(uri, ping_interval=5, ping_timeout=10) as websocket:
-		print("Connected to server")
+	def connect(self):
+		self.loop.run_until_complete(self._connect())
+		print("connected to server!")
 
-		# register with server
-		await websocket.send(registerJson())
-		try:
-			response = json.loads(await websocket.recv())
-		except json.JSONDecodeError:
-			await websocket.send(json.dumps({"error": "malformed json"}))
-		print(f"Registered. UUID = {response["uuid"]}")
+	async def _send(self, payload: dict):
+		await self.connection.send(json.dumps(payload))
+	
+	async def _send_receive(self, payload: dict) -> dict:
+		await self.connection.send(json.dumps(payload))
+		while 1:
+			msg = await self.connection.recv()
+			data = json.loads(msg)
+			if data["type"] == "regResp":
+				return data
+	
+	def register(self, name: str):
+		payload = {
+			"type": "register",
+			"name": name,
+			"timestamp": time.time()
+		}
+		self.uuid = self.loop.run_until_complete(
+			self._send_receive(payload)
+		)["uuid"]
+		print(self.uuid)
 
+	async def _async_input(prompt: str = "") -> str:
+		return await asyncio.get_event_loop().run_in_executor(None, input, prompt)
 
-		while True:
-			msg = await async_input("Enter message, q to quit: ")
-			if msg.lower() == "q":
-				print("Closing connection")
-				break
-			
-			json_obj = {
-				"type": msg,
-				"name": "John",
-				"timestamp": time.time()
-			}
-			await websocket.send(json.dumps(json_obj))
-			
+	async def _listen(self, callback):
+		async for message in self.connection:
 			try:
-				response = json.loads(await websocket.recv())
+				response = json.loads(message)
 			except json.JSONDecodeError:
-				await websocket.send(json.dumps({"error": "malformed json"}))
-				continue
-			
-			print(f"Received from server: {response}")
+				self._send({"type": "error", "error": "malformed json"})
+			callback(message)
+	
+	def on_message(self, callback: callable):
+		asyncio.ensure_future(self._listen(callback))
 
 if __name__ == "__main__":
-	asyncio.run(client())
+	client = Client()
+	client.url = "ws://127.0.0.1:8000/ws"
+	client.connect()
+	client.register("Otto")
