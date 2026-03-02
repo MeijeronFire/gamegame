@@ -3,12 +3,16 @@ import uuid
 class Game:
     state = {
         "playerAmount" : 0,
-        "playerNames" : [],
+        "playerNames" : []
+    }
+
+    playerData = {
         "players" : [
-        
+
         ]
     }
-    def genPlayer(self, name: str) -> bool | int:
+
+    def genPlayer(self, name: str) -> bool | str:
         """
         genPlayer: safe interface for adding to the players in the
         state of the game
@@ -23,11 +27,15 @@ class Game:
         self.state["playerNames"].append(name)
 
         player_uuid = str(uuid.uuid4())
-        self.state['players'].append({
-            'playerNum' : self.state["playerAmount"],
-            'displayName': name,
-            'uuid' : player_uuid
+        self.playerData['players'].append({
+            player_uuid : {
+                'playerNum' : self.state["playerAmount"],
+                'displayName': name,
+            }
         })
         self.state["playerAmount"] += 1 # increment the amount of players
         
         return player_uuid
+
+    def getState(self) -> dict:
+        return self.state

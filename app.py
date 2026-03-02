@@ -1,9 +1,18 @@
 #####################################################################
 """
 Accepted protocols:
-	- register:
-		msg: register (str)
-		name: displayname: (str)
+	Every message must have a:
+		- type
+		- timestamp
+		- own UUID for every request that is not _register_
+	Specific queries:
+	
+	register:
+		input:
+			msg: register (str)
+			name: displayname: (str)
+		output:
+			uuid: UUID
 """
 
 
@@ -55,11 +64,13 @@ game_lock = threading.Lock()
 # protocol layer
 #
 
-def readMsg(msg: json) -> json:
+def readMsg(msg: dict) -> dict:
 	type = msg["type"]
 	match type:
 		case "register":
-			uber.genPlayer(msg["name"])
+			return {'uuid': uber.genPlayer(msg["name"])}
+		case "getState":
+			return uber.getState()
 		case _:
 			print("idk what you want")
 
