@@ -1,24 +1,16 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
+from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates") # html
+app.mount("/static", StaticFiles(directory="static"), name="static") # css
 
 @app.get("/", response_class=HTMLResponse)
-def read_root():
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>FastAPI Game</title>
-        </head>
-        <body>
-            <h1>Welcome to the Game!</h1>
-            <p>Connect your WebSocket client to <code>/ws</code> to play.</p>
-        </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+def read_root(request: Request):
+	return templates.TemplateResponse("index.html", {"request": request, "title": "FastAPI Game", "player_count": 3})
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
