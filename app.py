@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, Request
+from fastapi import WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,11 +17,20 @@ def read_root(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()  # Accept the client connection
-	while 1:	
-		data = await websocket.receive_text()        # Wait for client message
-		msg = json.loads(data)
-		print(f"received {msg["msg"]} at {msg["timestamp"]}")
-		await websocket.send_json({"lorem": "ipsum"})
+	try: # do this until the websocket disconnects unexpectedly
+		while 1:	
+			try: # do this unless the json is broken
+				data = await websocket.receive_text()        # Wait for client message
+				msg = json.loads(data)
+			except json.JSONDecodeError: # if the json is broken
+				await websocket.send_json({"error": "malformed json"})
+				continue # wait for the next thingie
+
+			print(f"received {msg["msg"]} at {msg["timestamp"]}")
+			# send response
+			await websocket.send_json({"lorem": "ipsum"})
+	except WebSocketDisconnect:
+		print("Client disconnected (normal or abnormal)")
 
 if __name__ == "__main__":
 	uvicorn.run(app, host="127.0.0.1", port=8000)
