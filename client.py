@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 import asyncio
 import websockets
 import time
 import json
+import inspect
 from random import randint
 
 class Client:
@@ -12,101 +15,75 @@ class Client:
 		self.name = "Evgeny"
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
-		self._callbacks = []
-
-	async def _async_input(self, prompt: str = "") -> str:
-		return await asyncio.get_event_loop().run_in_executor(None, input, prompt)
-
-	def async_input(self, prompt: str = "") -> str:
-		return self.loop.run_until_complete(self._async_input(prompt))
-
+		self._listeners = {}
+		self.latest = None
+	
+	def on(self, action: str):
+		def decorator(func):
+			# if self._listeners["action"] is empty, initialize it
+			self._listeners.setdefault(action, []).append(func)
+			return func
+		return decorator
+	
 	async def _connect(self):
 		self.connection = await websockets.connect(self.url, ping_interval=20, ping_timeout=10)
-
-	def connect(self):
-		self.loop.run_until_complete(self._connect())
 		print("connected to server!")
 
-	async def _send(self, payload: dict):
-		await self.connection.send(json.dumps(payload))
-	
-	def send(self, action: str, **data):
-		payload = {
+	async def _send(self, action: str, **payload):
+		packet = {
 			"type" : action,
 			"uuid" : self.uuid,
 			"name" : self.name,
 			"timestamp" : time.time(),
-			**data
+			**payload
 		}
-		print(f"sending {payload}")
-		return self.loop.run_until_complete(self._send(payload))
+		await self.connection.send(json.dumps(packet))
 
 	async def _listen(self):
-		"""
-		Waits for all incoming messages and handles them
-		"""
 		async for message in self.connection:
-			try:
-				response = json.loads(message)
-			except json.JSONDecodeError:
-				await self._send({"type": "error", "error": "malformed json"})
-				continue
-			
-			for callback in self._callbacks:
-				callback(response)
-	def listener(self, func: callable):
-		"""
-		Decorator. Used with:
-			@Client.listener
-			def something():
-				...
-		"""
-		self._callbacks.append(func)
-		return func
+			self.latest = json.loads(message)
+			# dispatch the type given by the packet
+			await self._dispatch(self.latest["type"]) 
+	
+	async def _dispatch(self, packetType: str):
+		for func in self._listeners.get(packetType, []):
+			if inspect.iscoroutinefunction(func):
+				await func()
+			else:
+				raise("Je bent een sukkel want je functie is niet async")
 
-	async def _send_receive(self, payload: dict) -> dict:
-		await self.connection.send(json.dumps(payload))
+	async def _register(self):
+		await self._send("register", foo="bar")
 		while 1:
 			msg = await self.connection.recv()
 			data = json.loads(msg)
 			if data["type"] == "regResp":
-				return data
-	
-	def register(self):
-		payload = {
-			"type": "register",
-			"name": self.name,
-			"timestamp": time.time()
-		}
-		self.uuid = self.loop.run_until_complete(
-			self._send_receive(payload)
-		)["uuid"]
+				break
+		# now we know we have received a register response packet
+		self.uuid = data['uuid']
 		print(self.uuid)
-	
-	def on_message(self, func: callable):
-		self._handler = func
-		return func
 
+	async def _main(self):
+		await self._connect()
+		await self._register()
+		await self._send("showPacket")
+		await self._listen()
+	
 	def run(self):
-		async def main():
-			self.connect()
-			self.register()
-			self._listener_task = asyncio.create_task(self._listen())
-			await self._listener_task
-		self.loop.run_until_complete(main())
+		asyncio.run(self._main())
+
+#####################################################################
+# Interface
 
 client = Client()
 
-@client.listener
-def customListener(msg):
-	print(f"anker anker {msg}")
-
 client.url = "ws://127.0.0.1:8000/ws"
 client.name = str(randint(0, 10000))
+
+@client.on("showPacket")
+async def test():
+	print("sent something")
+	print(f"We have received {client.latest}")
+	
+
 client.run()
-while 1:
-	val = client.async_input()
-	client.send(
-		action = "getState",
-		some = val
-	)
