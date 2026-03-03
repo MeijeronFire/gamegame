@@ -26,17 +26,23 @@ Accepted protocols:
 	
 	error: says there is an error
 """
-
+#####################################################################
 
 #
 # imports for server
 #
 
+# fastapi
 from fastapi import FastAPI, WebSocket, Request
 from fastapi import WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+
+# admin commands
+from backend.console import Console
+
+# actual server 
 import uvicorn
 
 #
@@ -44,9 +50,15 @@ import uvicorn
 #
 
 import json
-import cmd
 import threading
 from time import sleep
+
+def log(data: dict):
+	print(f"""
+		Name: {data.get("name")}
+		UUID: {data.get("uuid")}
+		timestamp: {data.get("timestamp")}
+	""")
 
 #
 # game modules
@@ -68,10 +80,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static") # css
 #
 
 game_lock = threading.Lock()
-# console_print_lock = threading.Lock()
-# def safe_print(*args, **kwargs):
-# 	with console_print_lock:
-# 		print(*args, **kwargs)
 
 #
 # protocol layer
@@ -92,45 +100,6 @@ def readMsg(msg: dict) -> dict:
 			return msg
 		case _:
 			print("idk what you want")
-
-#
-# console
-#
-
-class Console(cmd.Cmd):
-	intro = "Lorem Ipsum Dolor Sit Amet"
-	prompt = "[anker] - "
-
-	def do_hello(self, arg):
-		"""
-		usage: hello <name>
-
-		name: person to greet
-		"""
-		print(f"Hello {arg}")
-	
-	def do_printstate(self, arg):
-		"""
-		usage: printstate
-		
-		prints current state of game
-		"""
-		print(f"{uber.state}")
-	
-	def do_printplayerdata(self, arg):
-		"""
-		usage: printstate
-		
-		prints current state of game
-		"""
-		print(f"{uber.playerData}")
-
-def log(data: dict):
-	print(f"""
-		Name: {data.get("name")}
-		UUID: {data.get("uuid")}
-		timestamp: {data.get("timestamp")}
-	""")
 
 #
 # API endpoints
@@ -166,6 +135,6 @@ async def websocket_endpoint(websocket: WebSocket):
 		print("Client disconnected (normal or abnormal)")
 
 if __name__ == "__main__":
-	console = Console()
+	console = Console(uber)
 	threading.Thread(target=console.cmdloop, daemon=True).start()
 	uvicorn.run(app, host="127.0.0.1", port=8000)
