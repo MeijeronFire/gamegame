@@ -5,6 +5,7 @@ Accepted protocols:
 		- type
 		- timestamp
 		- own UUID for every request that is not _register_
+		- personal name
 	Specific queries:
 	
 	register: registers player
@@ -79,8 +80,9 @@ def readMsg(msg: dict) -> dict:
 	type = msg["type"]
 	match type:
 		case "register":
-			print(msg)
-			return {"type": "regResp",'uuid': uber.genPlayer(msg["name"])}
+			response = {"type": "regResp",'uuid': uber.genPlayer(msg["name"])}
+			print(response)
+			return response
 		case "getState":
 			return uber.getState()
 		case "showPacket":
@@ -120,13 +122,20 @@ class Console(cmd.Cmd):
 		"""
 		print(f"{uber.playerData}")
 
+def log(data: dict):
+	print(f"""
+		Name: {data.get("name")}
+		UUID: {data.get("uuid")}
+		timestamp: {data.get("timestamp")}
+	""")
+
 #
 # API endpoints
 #
 
 ## HTML endpoint
 @app.get("/", response_class=HTMLResponse)
-def read_root(request: Request):
+async def read_root(request: Request):
 	return templates.TemplateResponse("index.html", {
 			"request": request,
 			"title": "FastAPI Game",
@@ -143,7 +152,7 @@ async def websocket_endpoint(websocket: WebSocket):
 				# read and load message
 				data = await websocket.receive_text()
 				msg = json.loads(data)
-				print(f"received {msg["type"]} query at {msg["timestamp"]}") # log input
+				log(msg)
 			except json.JSONDecodeError: # if the json is broken
 				await websocket.send_json({"error": "malformed json"})
 				continue # wait for the next thingie
