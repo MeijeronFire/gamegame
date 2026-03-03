@@ -46,6 +46,7 @@ import uvicorn
 import json
 import cmd
 import threading
+from time import sleep
 
 #
 # game modules
@@ -86,6 +87,8 @@ def readMsg(msg: dict) -> dict:
 		case "getState":
 			return uber.getState()
 		case "showPacket":
+			sleep(2)
+			print("got showPacket")
 			return msg
 		case _:
 			print("idk what you want")

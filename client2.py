@@ -4,6 +4,7 @@ import asyncio
 import websockets
 import time
 import json
+import inspect
 from random import randint
 
 class Client:
@@ -14,12 +15,13 @@ class Client:
 		self.name = "Evgeny"
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
-		self._listeners = []
-		self._senders = []
+		self._listeners = {}
+		self.latest = None
 	
-	def onmessage(self):
+	def on(self, action: str):
 		def decorator(func):
-			self._listeners.append(func)
+			# if self._listeners["action"] is empty, initialize it
+			self._listeners.setdefault(action, []).append(func)
 			return func
 		return decorator
 	
@@ -38,7 +40,17 @@ class Client:
 		await self.connection.send(json.dumps(packet))
 
 	async def _listen(self):
-		...
+		async for message in self.connection:
+			self.latest = json.loads(message)
+			# dispatch the type given by the packet
+			await self._dispatch(self.latest["type"]) 
+	
+	async def _dispatch(self, packetType: str):
+		for func in self._listeners.get(packetType, []):
+			if inspect.iscoroutinefunction(func):
+				await func()
+			else:
+				raise("Je bent een sukkel want je functie is niet async")
 
 	async def _register(self):
 		await self._send("register", foo="bar")
@@ -54,8 +66,8 @@ class Client:
 	async def _main(self):
 		await self._connect()
 		await self._register()
-		coroutines = [func() for func in self._listeners + self._senders]
-		await asyncio.gather(*coroutines)
+		await self._send("showPacket")
+		await self._listen()
 	
 	def run(self):
 		asyncio.run(self._main())
@@ -68,8 +80,10 @@ client = Client()
 client.url = "ws://127.0.0.1:8000/ws"
 client.name = str(randint(0, 10000))
 
-@client.onmessage()
+@client.on("showPacket")
 async def test():
-	await client._send("showPacket", some="payload")
+	print("sent something")
+	print(f"We have received {client.latest}")
+	
 
 client.run()

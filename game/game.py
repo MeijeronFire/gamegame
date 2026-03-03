@@ -37,5 +37,16 @@ class Game:
         
         return player_uuid
 
+    def delPlayer(self, uuid: str) -> None:
+        """
+        delPlayer: interface to delete players that have disconnected
+        completely.
+        
+        :rtype: None
+        """
+        # first find the playername mapped to the uuid. Names are also
+        # unique, but we don't want to be able to delete players by
+        # using a publicly available key, for if we want 
+
     def getState(self) -> dict:
         return self.state
