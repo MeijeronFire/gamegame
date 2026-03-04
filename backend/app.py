@@ -93,7 +93,10 @@ def readMsg(msg: dict) -> dict:
 			print(response)
 			return response
 		case "getState":
-			return uber.getState()
+			return {
+				"type": "stateResp",
+				"data": uber.getState()
+			}
 		case "showPacket":
 			sleep(2)
 			print("got showPacket")
