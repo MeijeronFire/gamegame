@@ -89,20 +89,29 @@ def readMsg(msg: dict) -> dict:
 	type = msg["type"]
 	match type:
 		case "register":
-			response = {"type": "regResp",'uuid': uber.genPlayer(msg["name"])}
+			response = {
+				"type": "regResp",
+				'uuid': uber.genPlayer(msg["name"])
+			}
 			print(response)
 			return response
+		
 		case "getState":
 			return {
 				"type": "stateResp",
 				"data": uber.getState()
 			}
+		
 		case "showPacket":
 			sleep(2)
 			print("got showPacket")
 			return msg
+		
 		case _:
-			print("idk what you want")
+			return {
+				"type": "error",
+				"errorType": "unknown protocol"
+			}
 
 #
 # API endpoints

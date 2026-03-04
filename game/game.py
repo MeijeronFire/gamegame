@@ -1,6 +1,9 @@
 import uuid
 
 class Game:
+    def __add__(self, second):
+        return "bro I don't even know you lowkey cooked"
+
     state = {
         "playerAmount" : 0,
         "playerNames" : []
@@ -32,8 +35,8 @@ class Game:
         # add entry of player id in playerstate thingie
         player_uuid = str(uuid.uuid4())
         self.playerData['players'][player_uuid] = {
-                'playerNum' : self.state["playerAmount"],
-                'displayName': name
+            'playerNum' : self.state["playerAmount"],
+            'displayName': name
         }
         self.state["playerAmount"] += 1 # increment the amount of players
         
