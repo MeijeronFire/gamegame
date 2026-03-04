@@ -78,6 +78,7 @@ class Client:
 client = Client()
 
 client.url = "ws://127.0.0.1:8000/ws"
+#client.name = "Jeffie" #str(randint(0, 10000))
 client.name = str(randint(0, 10000))
 
 @client.on("showPacket")

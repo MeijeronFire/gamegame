@@ -1,4 +1,5 @@
 from game.uber import Game
+from pprint import pprint
 import cmd
 
 class Console(cmd.Cmd):
@@ -32,7 +33,7 @@ class Console(cmd.Cmd):
 		
 		prints current state of game
 		"""
-		print(f"{self.uber.state}")
+		pprint(self.uber.state)
 	
 	def do_printplayerdata(self, arg):
 		"""
@@ -40,4 +41,17 @@ class Console(cmd.Cmd):
 		
 		prints current state of game
 		"""
-		print(f"{self.uber.playerData}")
+		pprint(self.uber.playerData)
+
+	def do_kick(self, uuid: str):
+		"""
+		usage: kick <uuid>
+
+		kicks a player by a UUID
+		"""
+		name = self.uber.playerData["players"][uuid]["displayName"]
+		print(f"kicking {name}")
+		if self.uber.delPlayer(uuid):
+			print("succes")
+		else:
+			print('failure')
