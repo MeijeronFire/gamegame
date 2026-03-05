@@ -89,11 +89,13 @@ def readMsg(msg: dict) -> dict:
 	type = msg["type"]
 	match type:
 		case "register":
+			# register player in game state and capture UUID
+			uuid = uber.genPlayer(msg["name"])
+			# acknowledge and share generated UUID of player
 			response = {
 				"type": "regResp",
-				'uuid': uber.genPlayer(msg["name"])
+				'uuid': uuid
 			}
-			print(response)
 			return response
 		
 		case "getState":

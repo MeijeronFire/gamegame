@@ -5,7 +5,6 @@ import websockets
 import time
 import json
 import inspect
-from random import randint
 
 class Client:
 	def __init__(self):
@@ -16,7 +15,7 @@ class Client:
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
 		self._listeners = {}
-		self.latest = None
+		self._latest = None
 	
 	def on(self, action: str):
 		def decorator(func):
@@ -45,7 +44,7 @@ class Client:
 
 	async def _listen(self):
 		async for message in self.connection:
-			self.latest = json.loads(message)
+			self._latest = json.loads(message)
 			# dispatch the type given by the packet
 			await self._dispatch(self.latest["type"]) 
 	
@@ -66,6 +65,18 @@ class Client:
 		# now we know we have received a register response packet
 		self.uuid = data['uuid']
 		print(self.uuid)
+
+	def _filtermessage(self):
+		# we need to filter the incoming message to update the
+		# game state.
+		if self._latest.get('data'):
+			pass
+		else:
+			# this means that there is some fucked up data
+			print(
+				f"[{time.time()}]: Malformed data. ",
+				f"Expected data entry, got {self._latest}"
+			)
 
 	async def _main(self):
 		await self._connect()

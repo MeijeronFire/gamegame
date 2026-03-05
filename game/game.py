@@ -4,17 +4,30 @@ class Game:
     def __add__(self, second):
         return "bro I don't even know you lowkey cooked"
 
+    # This should be expanded on by various subclasses,
+    # but must *always* include these two fields.
     state = {
         "playerAmount" : 0,
         "playerNames" : []
     }
 
+    # this should only be written to by *this* class. It can be used
+    # for lookup by subclasses, but *no* writing
     playerData = {
         "players" : {}
     }
 
-    def _isPlayer(self, uuid: str) -> bool:
-        return uuid in self.playerData["players"].keys()
+    def isPlayer(self, uuid: str, name: str) -> bool:
+        if not (uuid in self.playerData["players"].keys()):
+            return False
+        
+        if not (name == self.playerData["players"][uuid]["displayName"]):
+            return False
+        
+        if not (name in self.state["playerNames"]):
+            return False
+
+        return True
 
     def genPlayer(self, name: str) -> bool | str:
         """
@@ -40,6 +53,8 @@ class Game:
         }
         self.state["playerAmount"] += 1 # increment the amount of players
         
+        # optional call to be filled by further subclasses
+        self._onRegister()
         return player_uuid
 
     def delPlayer(self, uuid: str) -> bool:
@@ -55,7 +70,7 @@ class Game:
         # using a publicly available key, for if we want to use this
         # as an interface for deregistering or smth. Best practice idk
 
-        if not self._isPlayer(uuid):
+        if not self.isPlayer(uuid):
             return False
         name = self.playerData["players"][uuid]['displayName']
         self.playerData["players"].pop(uuid)
@@ -65,3 +80,7 @@ class Game:
 
     def getState(self) -> dict:
         return self.state
+
+    # hooks to be filled by subclasses
+    def _onRegister(self):
+        pass
